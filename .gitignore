@@ -1,0 +1,9 @@
+.DS_Store
+/.idea
+/dist
+/docs
+/node_modules
+/package-lock.json
+/users.json
+/.env.test
+/test/vars.ts
