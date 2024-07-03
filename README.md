@@ -23,7 +23,7 @@ import {
 
 const sdk = await ClientSdk.create(
     'wss://ws.trade.example.com/echo/websocket',
-    82,
+    303,
     new LoginPasswordAuthMethod('https://api.trade.example.com', "login", "password")
 )
 ```
