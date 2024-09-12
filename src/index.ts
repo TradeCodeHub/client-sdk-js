@@ -481,6 +481,11 @@ export class Balance {
     public amount: number
 
     /**
+     * Current amount of bonuses.
+     */
+    public bonusAmount: number
+
+    /**
      * User's balance currency code (ISO 4217).
      */
     public currency: string
@@ -536,6 +541,11 @@ export class Balance {
     public available: number | undefined
 
     /**
+     * Current amount of money on margin user's balance.
+     */
+    public cash: number | undefined
+
+    /**
      * Margin level as a percentage.
      */
     public marginLevel: number | undefined
@@ -568,6 +578,7 @@ export class Balance {
         this.id = msg.id
         this.type = this.convertBalanceType(msg.type)
         this.amount = msg.amount
+        this.bonusAmount = msg.bonusAmount
         this.currency = msg.currency
         this.userId = msg.userId
         this.isMargin = msg.isMargin
@@ -602,6 +613,34 @@ export class Balance {
     }
 
     /**
+     * Returns available amount for margin trading.
+     */
+    public availableForMarginAmount(): number {
+        if (this.isMargin) {
+            return this.available || 0
+        }
+
+        return this.amount
+    }
+
+    /**
+     * Returns available amount for options trading.
+     */
+    public availableForOptionsAmount(): number {
+        if (this.isMargin) {
+            if (this.available && this.cash) {
+                if (this.available < this.cash) {
+                    return this.available + this.bonusAmount
+                } else {
+                    return this.cash + this.bonusAmount
+                }
+            }
+        }
+
+        return this.amount + this.bonusAmount
+    }
+
+    /**
      * Updates the class instance from DTO.
      * @param msg - Balance data transfer object.
      * @private
@@ -609,6 +648,7 @@ export class Balance {
     update(msg: BalancesBalanceChangedV1): void {
         this.type = this.convertBalanceType(msg.type)
         this.amount = msg.amount
+        this.bonusAmount = msg.bonusAmount
         this.currency = msg.currency
         this.userId = msg.userId
 
@@ -624,8 +664,10 @@ export class Balance {
         this.dividends = msg.dividends
         this.margin = msg.margin
         this.available = msg.available
+        this.cash = msg.cash
         this.marginLevel = msg.marginLevel
         this.stopOutLevel = msg.stopOutLevel
+        this.bonusAmount = msg.bonus
 
         this.onUpdateObserver.notify(this)
     }
@@ -1153,7 +1195,7 @@ export class Orders {
      * List of supported instrument types.
      * @private
      */
-    private instrumentTypes: string[] = ["digital-option","marginal-cfd", "marginal-crypto", "marginal-forex"]
+    private instrumentTypes: string[] = ["digital-option", "marginal-cfd", "marginal-crypto", "marginal-forex"]
 
 
     /**
@@ -4942,7 +4984,7 @@ class HttpApiClient {
                 method: request.method(),
                 headers: {
                     'Content-Type': 'application/json',
-                    'User-Agent': 'tradecodehub-client-sdk-js/1.0.1'
+                    'User-Agent': 'tradecodehub-client-sdk-js/1.1.0'
                 },
                 body: JSON.stringify(request.messageBody())
             }
@@ -5006,7 +5048,7 @@ class WsApiClient {
             this.connection = new WebSocket(this.apiUrl, {
                 headers: {
                     'cookie': `platform=${this.platformId}`,
-                    'user-agent': 'tradecodehub-client-sdk-js/1.0.1'
+                    'user-agent': 'tradecodehub-client-sdk-js/1.1.0'
                 }
             })
         } else {
@@ -5057,6 +5099,12 @@ class WsApiClient {
                 }
             } else if (frame.name && frame.name === 'timeSync') {
                 this.currentTime.unixMilliTime = frame.msg
+            } else if (frame.name && frame.name === 'authenticated' && frame.msg === false) {
+                for (const [, requestMetaData] of this.requests) {
+                    if (requestMetaData.request instanceof Authenticate) {
+                        requestMetaData.reject(new Error('authentication is failed'))
+                    }
+                }
             }
         }
 
@@ -5665,6 +5713,7 @@ class BalancesBalanceChangedV1 {
     id: number
     type: number
     amount: number
+    bonusAmount: number
     currency: string
     userId: number
 
@@ -5673,6 +5722,7 @@ class BalancesBalanceChangedV1 {
             id: number
             type: number
             amount: number
+            bonus_amount: number
             currency: string
         },
         user_id: number
@@ -5680,6 +5730,7 @@ class BalancesBalanceChangedV1 {
         this.id = data.current_balance.id
         this.type = data.current_balance.type
         this.amount = data.current_balance.amount
+        this.bonusAmount = data.current_balance.bonus_amount
         this.currency = data.current_balance.currency
         this.userId = data.user_id
     }
@@ -5775,6 +5826,7 @@ class BalancesAvailableBalancesV1Balance {
     id: number
     type: number
     amount: number
+    bonusAmount: number
     currency: string
     userId: number
     isMargin: boolean
@@ -5783,6 +5835,7 @@ class BalancesAvailableBalancesV1Balance {
         id: number
         type: number
         amount: number
+        bonus_amount: number
         currency: string
         user_id: number
         is_marginal: boolean
@@ -5790,6 +5843,7 @@ class BalancesAvailableBalancesV1Balance {
         this.id = data.id
         this.type = data.type
         this.amount = data.amount
+        this.bonusAmount = data.bonus_amount
         this.currency = data.currency
         this.userId = data.user_id
         this.isMargin = data.is_marginal
@@ -7605,6 +7659,7 @@ class MarginPortfolioBalanceV1 {
     id: number
     type: number
     cash: number
+    bonus: number
     currency: string
     userId: number
     pnl: number
@@ -7622,6 +7677,7 @@ class MarginPortfolioBalanceV1 {
         id: number
         type: number
         cash: string
+        bonus: string
         currency: string
         user_id: number
         pnl: string
@@ -7638,6 +7694,7 @@ class MarginPortfolioBalanceV1 {
         this.id = data.id
         this.type = data.type
         this.cash = parseFloat(data.cash)
+        this.bonus = parseFloat(data.bonus)
         this.currency = data.currency
         this.userId = data.user_id
         this.pnl = parseFloat(data.pnl)
