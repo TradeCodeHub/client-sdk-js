@@ -961,7 +961,7 @@ export class CurrentQuote {
         phase: string
     }): void {
         this.activeId = msg.activeId
-        this.time = new Date(msg.time * 1000)
+        this.time = new Date(msg.time)
         this.ask = msg.ask
         this.bid = msg.bid
         this.value = msg.value
@@ -5186,7 +5186,7 @@ class WsApiClient {
             this.connection = new WebSocket(this.apiUrl, {
                 headers: {
                     'cookie': `platform=${this.platformId}`,
-                    'user-agent': 'tradecodehub-client-sdk-js/1.1.1'
+                    'user-agent': 'tradecodehub-client-sdk-js/1.3.0'
                 }
             })
         } else {
@@ -6874,7 +6874,7 @@ class CallDigitalOptionInstrumentsGetInstrumentsV3 implements Request<DigitalOpt
     messageBody() {
         return {
             name: 'digital-option-instruments.get-instruments',
-            version: '1.0',
+            version: '3.0',
             body: {
                 asset_id: this.assetId
             }
